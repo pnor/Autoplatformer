@@ -4,9 +4,9 @@ import constants
 import pygame
 from Entities.Entity import Entity
 from pygame.locals import *
+from Entities.Components.Components import CollisionComponent
 
 class Player(Entity):
-    
 
     def __init__(self, position=None):
         """
@@ -14,7 +14,6 @@ class Player(Entity):
         :param position: starting position of player. 0, 0 by default
         """
         super().__init__()
-        # Constants
 
         self.image = pygame.image.load(constants.DEBUG_IMG).convert_alpha()
         self.state = PlayerState.STAND
@@ -25,6 +24,9 @@ class Player(Entity):
             self.rect = self.image.get_rect()
 
         self.image = pygame.transform.scale(self.image, self.rect.size)
+
+        # Components
+        self.add_component(CollisionComponent(self))
 
     def update(self, deltatime):
         super().update(deltatime)

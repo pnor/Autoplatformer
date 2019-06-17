@@ -3,9 +3,12 @@ Classes related to the game map.
 """
 
 
-import constants
-from pytmx.util_pygame import load_pygame
 from enum import Enum
+
+from pytmx.util_pygame import load_pygame
+
+import constants
+
 
 class GameMap(object):
     map_data = None
@@ -23,9 +26,6 @@ class GameMap(object):
         """
         Returns: Tile properties for tile in the main game layer
         """
-        print('row: ' + str(row))
-        print('col: ' + str(col))
-        print('layer: ' + str(GameMap.MAIN_LAYER_INDEX))
         return GameMap.map_data.get_tile_properties(row, col, GameMap.MAIN_LAYER_INDEX)
 
 

@@ -1,12 +1,15 @@
 
 import sys
+
 import pygame
-from pygame.locals import *
 import pyscroll
+from pygame.locals import *
 from pytmx.util_pygame import load_pygame
+
 import constants
 from Entities.Player import Player
 from Map.GameMap import *
+
 
 class MainGame(object):
     # Game Constants
@@ -177,4 +180,3 @@ class MainGame(object):
 if __name__ == '__main__' : 
     game = MainGame()
     game.main()
-
