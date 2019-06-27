@@ -12,21 +12,28 @@ import constants
 
 class GameMap(object):
     map_data = None
-    MAIN_LAYER_INDEX = 0
+    MAIN_LAYER_INDEX = None 
+    temp_surface = None
 
     def set_up_map():
-        GameMap.map_data = load_pygame(constants.SIMPLE_MAP)
+        GameMap.map_data = load_pygame(constants.TEST_MAP)
         print('map data is ' + str(GameMap.map_data))
 
         # Set main layer of tmx map
         for i, layer in enumerate(GameMap.map_data):
-            GameMap.MAIN_LAYER_INDEX = i if layer.properties.get(MapInfo.MAIN.value) else None
+            if not GameMap.MAIN_LAYER_INDEX:
+                if layer.properties.get(MapInfo.MAIN.value) :
+                    GameMap.MAIN_LAYER_INDEX = i  
 
     def get_tile_properties(row, col):
         """
         Returns: Tile properties for tile in the main game layer
         """
         return GameMap.map_data.get_tile_properties(row, col, GameMap.MAIN_LAYER_INDEX)
+
+    def get_tile(id):
+        """ Returns tile corresponding to tile ID """
+        return GameMap.map_data
 
 
 
@@ -36,6 +43,7 @@ class MapInfo(Enum):
     MAIN = 'main' # Main layer of tilemap
 
     SPAWN = 'spawn'
-    FLOOR = 'floor'
-    WALL = 'wall'
+    SOLID = 'solid'
     SEMISOLID = 'semisolid'
+    SLOPE_LEFT = 'slope left'
+    SLOPE_RIGHT = 'slope right'

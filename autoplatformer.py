@@ -10,6 +10,8 @@ import constants
 from Entities.Player import Player
 from Map.GameMap import *
 
+from pygame.math import Vector2
+
 
 class MainGame(object):
     # Game Constants
@@ -52,6 +54,7 @@ class MainGame(object):
         winstyle = 1
         self.screen = pygame.display.set_mode(screen_size.size, pygame.RESIZABLE)
         self.temp_surface = pygame.Surface((screen_size.width / 2, screen_size.height / 2)).convert()
+        GameMap.temp_surface = self.temp_surface
 
     def set_up_map(self):
         """
@@ -66,7 +69,7 @@ class MainGame(object):
         # Make group with scrolling map
         self.group = pyscroll.PyscrollGroup(map_layer= self.map_layer)
 
-        self.map_layer.zoom = 0.5 
+        self.map_layer.zoom = 1.0 
 
     def spawn_player(self):
         """ Spawns player onto the map """
@@ -104,36 +107,56 @@ class MainGame(object):
         clamp_func = lambda val, max_val, min_val: max(min(val, max_val), min_val)
 
         event = poll()
+        keys = pygame.key.get_pressed()
         while event:
             if event.type == KEYDOWN:
                 # Zoom
                 if event.key == K_EQUALS:
-                    self.map_layer.zoom = 0.8 
-                    # self.map_layer.zoom = clamp_func(self.map_layer.zoom + 0.25, 0.1, 999)
+                    self.map_layer.zoom = clamp_func(self.map_layer.zoom + 0.25, 999, 0.24)
                     print('zoom~')
                 elif event.key == K_MINUS:
-                    self.map_layer.zoom = 1.1
-                    # self.map_layer.zoom = clamp_func(self.map_layer.zoom - 0.25, 0.1, 999)
+                    self.map_layer.zoom = clamp_func(self.map_layer.zoom - 0.25, 999, 0.24)
                     print('woom.')
                     # Movement
-                elif event.key == K_w:
-                    self.player.rect.move_ip((0, -30))
-                    print(self.player.rect)
-                elif event.key == K_a:
-                    self.player.rect.move_ip((-30, 0))
-                    print(self.player.rect)
-                elif event.key == K_s:
-                    self.player.rect.move_ip((0, 30))
-                    print(self.player.rect) 
-                elif event.key == K_d:
-                    self.player.rect.move_ip((30, 0))
-                    print(self.player.rect) 
-                elif event.key == K_1: # All images 
+
+                if event.key == K_1: # All images 
                     for layer in map_data.layers:
                         for x, y, img in layer.tiles():
                             print('(' + str(x) + ', ' + str(y) + ') ' + str(img))
 
             event = poll()
+
+        # Movement
+        if keys[K_w]:
+            self.player.velocity.y -= 10
+            # self.player.velocity.move_ip((0, -10))
+            print(self.player.velocity)
+        if keys[K_a]:
+            self.player.velocity.x -= 10
+            # self.player.velocity.move_ip((-10, 0))
+            print(self.player.velocity)
+        if keys[K_s]:
+            self.player.velocity.y += 10
+            # self.player.velocity.move_ip((0, 10))
+            print(self.player.velocity) 
+        if keys[K_d]:
+            self.player.velocity.x += 10
+            # self.player.velocity.move_ip((10, 0))
+            print(self.player.velocity)
+        if keys[K_0]:
+            self.player.velocity = Vector2(0, 0)
+            print('zeroing velocity: ' + str(self.player.velocity))
+        if keys[K_8]:
+            print('Moving to top left')
+            self.player.rect.topleft = (0, 0)
+        if keys[K_9]:
+            print('Rectangle Info')
+            print(self.player.rect.size)
+            print(self.player.rect.center)
+            print(self.player.rect.topleft)
+            print('Movement Info')
+            print('Veloc: ' + str(self.player.velocity))
+            print('Accel: ' + str(self.player.acceleration))
 
     def update_all(self, delta):
         """

@@ -16,7 +16,6 @@ class Entity(ABC, pygame.sprite.Sprite):
     def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         # Movement
-        self.position = Vector2()
         self.velocity = Vector2()
         self.acceleration = Vector2()
         # Should be zero if player doesn't touch controls
@@ -30,17 +29,9 @@ class Entity(ABC, pygame.sprite.Sprite):
 
     @abstractmethod
     def update(self, deltatime):
-        self.position += deltatime * self.velocity
+        self.rect.move_ip(self.velocity.x * deltatime, self.velocity.y * deltatime)
         self.velocity += deltatime * self.acceleration
         # Update all components
         for component in self.components.values():
             component.update(deltatime)
-
-         
-
-
-
-class EntityState(Enum):
-    AIR = 'air'
-    GROUND = 'ground'
 
