@@ -43,6 +43,12 @@ class CollisionComponent(Component):
         tile_origin_end_x = int(owner_body.topright[0] / TILE_SIZE) + 1 
         tile_origin_end_y = int(owner_body.bottomleft[1] / TILE_SIZE) + 1
 
+        # Used to create total collision fix vector
+        positive_y = 0
+        negative_y = 0
+        positive_x = 0
+        negative_x = 0
+
         for i in range(tile_origin_x, tile_origin_end_x + 1):
             for j in range(tile_origin_y, tile_origin_end_y + 1):
                 # Get tile, skip if not existent/has no property
@@ -56,19 +62,15 @@ class CollisionComponent(Component):
                 if properties.get(MapInfo.SOLID.value):
                     # print('Near: SOLID')
                     bbox = pygame.Rect((i * TILE_SIZE, j * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
-                    corrected = False
 
                     if bbox.colliderect(owner_body):
-                        horiz_collided = self.handle_collision(bbox, is_vertical=False)
-                        vert_collided = self.handle_collision(bbox, is_vertical=True)
-                        corrected = horiz_collided or vert_collided
-
-
-                    # If solid collision happens, reset velocity
-                    if corrected:
-                        print('Killing Velocity')
-                        self.owner.velocity.x = 0
-                        self.owner.velocity.y = 0 
+                        fix_velocity = self.handle_collision(bbox)
+                        negative_x = min(negative_x, fix_velocity.x)
+                        positive_x = max(positive_x, fix_velocity.x)
+                        negative_y = min(negative_y, fix_velocity.y)
+                        positive_y = max(positive_y, fix_velocity.y)
+                        # print('x: ' + str(negative_x) + ' - ' + str(positive_x))
+                        # print('y: ' + str(negative_y) + ' - ' + str(positive_y))
 
                 # Semisolids 
                 elif properties.get(MapInfo.SEMISOLID.value):
@@ -79,56 +81,68 @@ class CollisionComponent(Component):
                 elif properties.get(MapInfo.SLOPE_RIGHT.value):
                     print('Near: SLOPE RIGHT')
 
+        
+        # Create collision fix vector
+        net_fix_vector =  Vector2(positive_x, positive_y) + Vector2(negative_x, negative_y)
 
-    def handle_collision(self, bbox, is_vertical=False):
+        # Kill velocity if total fix velocity was large enough 
+        
+        tolerance = 1
+        if net_fix_vector.length() > tolerance:
+            print('NET FIX VELCOTIY WAS...')
+            print(net_fix_vector)
+            print('')
+            # Apply net fix vector 
+            owner_body.left += net_fix_vector.x
+            owner_body.top += net_fix_vector.y
+            # Kill velocity
+            self.owner.velocity.x = 0
+            self.owner.velocity.y = 0 
+        elif net_fix_vector.length() > 0 :
+            print('Was too small to do anything...')
+            print('fix vector: ' + str(net_fix_vector))
+
+    def handle_collision(self, bbox):
         """ 
         Resolves collisions by moving the owner
         :param bbox: Bounding box of tile
-        :param is_vertical: whether the collision being checked is a vertical collision or horizontal 
-        collision.
-        :return: Boolean whether the owner was changed due to a collision
+         REWRITE!
         """
         owner_body = self.owner.rect
+        fix_vector = Vector2()
 
-        if is_vertical:
-            # Y-component
-            # if either are negative, a collision may of happened
-            # If either's abs is larger than the height, its NOT a collision 
-            owner_top_bbox_bottom = owner_body.top - bbox.bottom  
-            owner_bottom_bbox_top = bbox.top - owner_body.bottom
-            # Top Collision
-            if owner_top_bbox_bottom < 0 and owner_top_bbox_bottom > -owner_body.height:
-                print('TOP COLLISION') 
-                corrected = True
-                new_x = owner_body.left
-                new_y = max(owner_body.top, bbox.bottom) 
-                owner_body.topleft = (new_x, new_y)
-            # Bottom Collision
-            elif owner_bottom_bbox_top < 0 and owner_bottom_bbox_top > -owner_body.height:
-                print('BOTTOM COLLISION') 
-                corrected = True
-                new_x = owner_body.left
-                new_y = min(owner_body.bottom, bbox.top)
-                owner_body.bottomleft = (new_x, new_y) 
-        else:
-            # X-componenet
-            owner_left_bbox_right = owner_body.left - bbox.right
-            owner_right_bbox_left = bbox.left - owner_body.right
-            # Left Collision
-            if owner_left_bbox_right < 0 and owner_left_bbox_right > -owner_body.width:
-                print('LEFT COLLISION')
-                corrected = True
-                new_x = max(owner_body.left, bbox.right) 
-                new_y = owner_body.bottom
-                owner_body.bottomleft = (new_x, new_y) 
-                print('end position: ' + str(owner_body.topleft)) 
-            # Right Collision
-            elif owner_right_bbox_left < 0 and owner_left_bbox_right > -owner_body.width:
-                print('RIGHT COLLISION')
-                corrected = True
-                new_x = min(owner_body.right, bbox.left) 
-                new_y = owner_body.bottom
-                owner_body.bottomright = (new_x, new_y) 
+        # Y-component
+        # if either are negative, a collision may of happened
+        # If either's abs is larger than the height, its NOT a collision 
+        print('owner size: ' + str(owner_body.size))
+        owner_top_bbox_bottom = owner_body.top - bbox.bottom  
+        owner_bottom_bbox_top = bbox.top - owner_body.bottom
+        print('owner top - bbox bottom: ' + str(owner_top_bbox_bottom))
+        print('owner bottom- bbox top: ' + str(owner_bottom_bbox_top))
+        # Top Collision
+        if owner_top_bbox_bottom < 0 and -owner_top_bbox_bottom < bbox.height * 0.2:
+            print('TOP COLLISION') 
+            fix_vector.y = -owner_top_bbox_bottom
+
+        # Bottom Collision
+        elif owner_bottom_bbox_top < 0 and -owner_bottom_bbox_top < bbox.height * 0.2:
+            print('BOTTOM COLLISION') 
+            fix_vector.y = owner_bottom_bbox_top
+
+        # X-componenet
+        owner_left_bbox_right = owner_body.left - bbox.right
+        owner_right_bbox_left = bbox.left - owner_body.right
+        # Left Collision
+        if owner_left_bbox_right < 0 and -owner_left_bbox_right < bbox.width * 0.2:
+            print('LEFT COLLISION')
+            fix_vector.x = -owner_left_bbox_right
+        # Right Collision
+        elif owner_right_bbox_left < 0 and -owner_right_bbox_left < bbox.width * 0.2:
+            print('RIGHT COLLISION')
+            fix_vector.x = owner_right_bbox_left 
+
+        return fix_vector
+
 
                  
 class GravityComponent(Component):
@@ -155,20 +169,21 @@ class GravityComponent(Component):
                 properties = GameMap.get_tile_properties(player_tile_x, player_tile_y)
                 # print(properties)
                 if properties and (properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value)):
-                    print('ON GROUND!')
+                    # print('ON GROUND!')
                     self.state = GravityCompState.GROUND
                     self.applied_gravity = False
             except: # Out of Bounds
-                print('x: ' + str(player_tile_x)) 
-                print('y: ' + str(player_tile_y + 1))
-                print('Out of Bounds check in Grav') # Update Acceleration for ground/air
+                pass
+                # print('x: ' + str(player_tile_x)) 
+                # print('y: ' + str(player_tile_y + 1))
+                # print('Out of Bounds check in Grav') # Update Acceleration for ground/air
 
         if self.state == GravityCompState.AIR and not self.applied_gravity:
             print('Applying Gravity!')
             self.owner.acceleration.y = 9.8
             self.applied_gravity = True
         elif self.state == GravityCompState.GROUND:
-            print('Stopping Accel from Gravity')
+            # print('Stopping Accel from Gravity')
             self.owner.acceleration.y = 0 
             self.state = GravityCompState.AIR
             self.applied_gravity = False

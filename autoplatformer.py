@@ -130,19 +130,19 @@ class MainGame(object):
         if keys[K_w]:
             self.player.velocity.y -= 10
             # self.player.velocity.move_ip((0, -10))
-            print(self.player.velocity)
+            # print(self.player.velocity)
         if keys[K_a]:
             self.player.velocity.x -= 10
             # self.player.velocity.move_ip((-10, 0))
-            print(self.player.velocity)
+            # print(self.player.velocity)
         if keys[K_s]:
             self.player.velocity.y += 10
             # self.player.velocity.move_ip((0, 10))
-            print(self.player.velocity) 
+            # print(self.player.velocity) 
         if keys[K_d]:
             self.player.velocity.x += 10
             # self.player.velocity.move_ip((10, 0))
-            print(self.player.velocity)
+            # print(self.player.velocity)
         if keys[K_0]:
             self.player.velocity = Vector2(0, 0)
             print('zeroing velocity: ' + str(self.player.velocity))
