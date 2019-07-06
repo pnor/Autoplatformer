@@ -25,7 +25,7 @@ class Entity(ABC, pygame.sprite.Sprite):
         self.components = {}
 
     def add_component(self, component):
-        self.components[type(component)] = component
+        self.components[component.id_class] = component
 
     @abstractmethod
     def update(self, deltatime):

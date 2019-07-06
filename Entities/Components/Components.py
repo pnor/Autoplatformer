@@ -14,24 +14,48 @@ Components for Entities. Components define the traits of all entities in the gam
 
 class Component(ABC):
     """ Abstraction of the basic component. All components have an owner and an update method"""
+
     
     def __init__(self, owner):
         assert isinstance(owner, Entity), 'owner is of type ' + str(type(owner)) + ' which is not a subclass of Entity'
         self.owner = owner
+        # Set id type of subclass so it can be used key for Entity's map
+        print('!')
+        self.__set_id_class()
 
     @abstractmethod
     def update(self, delta):
         """ Update entity using information stored in component"""
         pass
 
+    @classmethod
+    def __set_id_class(cls):
+        """ Sets the id_class of the subclass Component object with the class object of the Component
+        """
+        cls.id_class = cls
+
+    @classmethod
+    @property
+    def id_class(cls):
+        """
+        Return class object of the Component. Used to identify Components and retrieve components from
+        an Entity's Component dict without instantiating a new one each time
+        """
+        return cls.id_class
+            
 
 class CollisionComponent(Component):
     """ Allows Entities to collide with other entities with Collision Components"""
 
     def __init__(self, owner):
         super().__init__(owner)
+        # Init 
+        # if CollisionComponent.comp_type is None:
+        #     print('assigining')
+        #     CollisionComponent.comp_type = CollisionComponent 
 
     def update(self, delta):
+        # print(self.owner.components)
         # Check collision with world
         # Check collision with other entities 
         map_data = GameMap.map_data 
