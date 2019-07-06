@@ -8,6 +8,7 @@ from pytmx.util_pygame import load_pygame
 
 import constants
 from Entities.Player import Player
+from Entities.Components.Components import PlayerComponent
 from Map.GameMap import *
 
 from pygame.math import Vector2
@@ -108,6 +109,7 @@ class MainGame(object):
 
         event = poll()
         keys = pygame.key.get_pressed()
+        self.player.components[PlayerComponent.id_class].buttons = keys
         while event:
             if event.type == KEYDOWN:
                 # Zoom
@@ -126,23 +128,24 @@ class MainGame(object):
 
             event = poll()
 
-        # Movement
-        if keys[K_w]:
-            self.player.velocity.y -= 10
-            # self.player.velocity.move_ip((0, -10))
-            # print(self.player.velocity)
-        if keys[K_a]:
-            self.player.velocity.x -= 10
-            # self.player.velocity.move_ip((-10, 0))
-            # print(self.player.velocity)
-        if keys[K_s]:
-            self.player.velocity.y += 10
-            # self.player.velocity.move_ip((0, 10))
-            # print(self.player.velocity) 
-        if keys[K_d]:
-            self.player.velocity.x += 10
-            # self.player.velocity.move_ip((10, 0))
-            # print(self.player.velocity)
+        # Update Player
+        # DEBUG
+        # if keys[K_w]:
+        #     self.player.velocity.y -= 10
+        #     # self.player.velocity.move_ip((0, -10))
+        #     # print(self.player.velocity)
+        # if keys[K_a]:
+        #     self.player.velocity.x -= 10
+        #     # self.player.velocity.move_ip((-10, 0))
+        #     # print(self.player.velocity)
+        # if keys[K_s]:
+        #     self.player.velocity.y += 10
+        #     # self.player.velocity.move_ip((0, 10))
+        #     # print(self.player.velocity) 
+        # if keys[K_d]:
+        #     self.player.velocity.x += 10
+        #     # self.player.velocity.move_ip((10, 0))
+        #     print(self.player.velocity)
         if keys[K_0]:
             self.player.velocity = Vector2(0, 0)
             print('zeroing velocity: ' + str(self.player.velocity))

@@ -49,13 +49,8 @@ class CollisionComponent(Component):
 
     def __init__(self, owner):
         super().__init__(owner)
-        # Init 
-        # if CollisionComponent.comp_type is None:
-        #     print('assigining')
-        #     CollisionComponent.comp_type = CollisionComponent 
 
     def update(self, delta):
-        # print(self.owner.components)
         # Check collision with world
         # Check collision with other entities 
         map_data = GameMap.map_data 
@@ -174,45 +169,44 @@ class GravityComponent(Component):
 
     def __init__(self, owner):
         super().__init__(owner)
+        # Whether the player is on solid ground or in freefall
         self.state = GravityCompState.AIR
         # Used to make sure gravity is only applied once when leaving the ground 
-        self.applied_gravity = False 
+        self.should_apply_gravity = True 
+        self.debug = 0
 
     def update(self, delta):
-        # Change acceleration when in air and reset it when on ground
+        self.debug+=1
+        if self.debug % 5 == 0:
+            print(self.state)
+        # If in the air: Change acceleration when in air and reset it when on ground
         if self.state == GravityCompState.AIR:
             # Get floor tile
             TILE_SIZE = GameMap.map_data.tilewidth
             player_tile_x = int(self.owner.rect.midbottom[0] / TILE_SIZE)
-            player_tile_y = GameMap.map_data.height - int(self.owner.rect.midbottom[0] / TILE_SIZE) - 1
+            player_tile_y = int((self.owner.rect.midbottom[1] + 5) / TILE_SIZE)
 
-            # print('x: ' + str(player_tile_x)) 
-            # print('y: ' + str(player_tile_y))
             # Check if on ground tile
             try: 
                 properties = GameMap.get_tile_properties(player_tile_x, player_tile_y)
-                # print(properties)
+                # If they're on the ground change state and undo need to apply gravity
                 if properties and (properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value)):
-                    # print('ON GROUND!')
+                    print('ON GROUND!')
                     self.state = GravityCompState.GROUND
-                    self.applied_gravity = False
+                    self.should_apply_gravity = False 
             except: # Out of Bounds
-                pass
-                # print('x: ' + str(player_tile_x)) 
-                # print('y: ' + str(player_tile_y + 1))
-                # print('Out of Bounds check in Grav') # Update Acceleration for ground/air
+                print('Out of Bounds check in Grav') # Update Acceleration for ground/air
 
-        if self.state == GravityCompState.AIR and not self.applied_gravity:
+        # If in the air, and needs to apply gravity
+        if self.state == GravityCompState.AIR and self.should_apply_gravity:
             print('Applying Gravity!')
             self.owner.acceleration.y = 9.8
-            self.applied_gravity = True
-        elif self.state == GravityCompState.GROUND:
+            self.should_apply_gravity = False 
+        # If on the ground
+        elif self.state == GravityCompState.GROUND and self.owner.acceleration.y > 0:
             # print('Stopping Accel from Gravity')
             self.owner.acceleration.y = 0 
-            self.state = GravityCompState.AIR
-            self.applied_gravity = False
-            # TODO change this so it doesnt just reset to AIR. 
-            # TODO edit collision to handle multiple blocks in a line
+            self.should_apply_gravity = False
 
 class GravityCompState(Enum): 
     """ Tells the state of an entity. (Used with Gravity Component)"""
@@ -226,17 +220,84 @@ class PlayerComponent(Component):
     """ Component for player entity, handling all abilities a player can do"""
 
     def __init__(self, owner):
-        super().__init__(self, owner)
+        super().__init__(owner)
+        # Player State
+        self.player_state = PlayerState.STAND
+        self.power_up = PowerUp.NORMAL
+        # Player Constants
+        self.MAX_RUN_SPEED = 200 
+        self.WALK_ACCELERATION = 50
+        self.RUN_ACCELERATION = 100
+        self.JUMP_POWER = -30
+        # Set Player Entity Constants
+        self.owner.target_x_speed = self.MAX_RUN_SPEED
+        # Create Buttons list (!) should be set before update is called
+        self.buttons = [] 
 
-    def update(self, delta, buttons):
+    def update(self, delta):
         # Update with player keypresses
-        pass
-
+        # Movement
+        if self.buttons[pygame.K_a]:
+            if self.buttons[pygame.K_LSHIFT]:
+                print('runnin')
+                self.move(True, run=True)
+            else:
+                print('walkin')
+                self.move(True, run=False)
+        if self.buttons[pygame.K_d]:
+            if self.buttons[pygame.K_LSHIFT]:
+                print('runnin')
+                self.move(False, run=True)
+            else:
+                print('walkin')
+                self.move(False, run=False)
+        # Crouch
+        if self.buttons[pygame.K_s]:
+            print('walking')
+            self.crouch()
+        # Jumps
+        if self.buttons[pygame.K_SPACE]:
+            self.jump(spin=False)
+            print('jumpin')
+        if self.buttons[pygame.K_j]:
+            self.jump(spin=True)
+            print('spin jumpin')
+            
     def jump(self, spin=False):
-        pass
+        """
+        Makes the player jump.
+        :param spin: whether the player will do a spin jump
+        """
+        self.owner.velocity.y = self.JUMP_POWER
+        self.owner.components[GravityComponent.id_class].state = GravityCompState.AIR
+        self.player_state = PlayerState.JUMP
+        self.owner.components[GravityComponent.id_class].state = GravityCompState.AIR
 
-    def move(self, run=False):
-        pass
+    def move(self, left, run=False):
+        """
+        Makes the player move
+        :param left: True if the player will move left. False otherwise 
+        :param run: Boolean for whether the player will run instead of walk
+        """
+        if left:
+            self.owner.acceleration.x = -self.RUN_ACCELERATION if run else -self.WALK_ACCELERATION
+        else:
+            self.owner.acceleration.x = self.RUN_ACCELERATION if run else self.WALK_ACCELERATION               
+         
     
     def crouch(self):
         pass
+
+class PlayerState(Enum):
+    """ What the player is doing"""
+    STAND = 0
+    WALK = 1
+    RUN = 2
+    JUMP = 3
+    SPIN = 4
+
+class PowerUp(Enum):
+    """ Power Up player has"""
+    SMALL = 0
+    NORMAL = 1
+    LASER = 2
