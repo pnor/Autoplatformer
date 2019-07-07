@@ -13,6 +13,6 @@ class Buttons(Enum):
     # Crouch
     CROUCH = K_s
     # Spin Jump
-    SPIN = K_RSHIFT 
+    SPIN = K_j 
     # Shoot laser if has powerup/Use with MOVE to run
     RUN = K_LSHIFT 

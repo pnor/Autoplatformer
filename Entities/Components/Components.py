@@ -6,6 +6,7 @@ from enum import Enum
 
 from Entities.Entity import Entity
 from Map.GameMap import *
+from Input.Buttons import Buttons
 
 
 """
@@ -104,8 +105,6 @@ class CollisionComponent(Component):
         # Create collision fix vector
         net_fix_vector =  Vector2(positive_x, positive_y) + Vector2(negative_x, negative_y)
 
-        # Kill velocity if total fix velocity was large enough 
-        
         tolerance = 1
         if net_fix_vector.length() > tolerance:
             print('NET FIX VELCOTIY WAS...')
@@ -133,19 +132,19 @@ class CollisionComponent(Component):
         # Y-component
         # if either are negative, a collision may of happened
         # If either's abs is larger than the height, its NOT a collision 
-        print('owner size: ' + str(owner_body.size))
+        # print('owner size: ' + str(owner_body.size))
         owner_top_bbox_bottom = owner_body.top - bbox.bottom  
         owner_bottom_bbox_top = bbox.top - owner_body.bottom
-        print('owner top - bbox bottom: ' + str(owner_top_bbox_bottom))
-        print('owner bottom- bbox top: ' + str(owner_bottom_bbox_top))
+        # print('owner top - bbox bottom: ' + str(owner_top_bbox_bottom))
+        # print('owner bottom- bbox top: ' + str(owner_bottom_bbox_top))
         # Top Collision
         if owner_top_bbox_bottom < 0 and -owner_top_bbox_bottom < bbox.height * 0.2:
-            print('TOP COLLISION') 
+            # print('TOP COLLISION') 
             fix_vector.y = -owner_top_bbox_bottom
 
         # Bottom Collision
         elif owner_bottom_bbox_top < 0 and -owner_bottom_bbox_top < bbox.height * 0.2:
-            print('BOTTOM COLLISION') 
+            # print('BOTTOM COLLISION') 
             fix_vector.y = owner_bottom_bbox_top
 
         # X-componenet
@@ -153,11 +152,11 @@ class CollisionComponent(Component):
         owner_right_bbox_left = bbox.left - owner_body.right
         # Left Collision
         if owner_left_bbox_right < 0 and -owner_left_bbox_right < bbox.width * 0.2:
-            print('LEFT COLLISION')
+            # print('LEFT COLLISION')
             fix_vector.x = -owner_left_bbox_right
         # Right Collision
         elif owner_right_bbox_left < 0 and -owner_right_bbox_left < bbox.width * 0.2:
-            print('RIGHT COLLISION')
+            # print('RIGHT COLLISION')
             fix_vector.x = owner_right_bbox_left 
 
         return fix_vector
@@ -167,40 +166,62 @@ class CollisionComponent(Component):
 class GravityComponent(Component):
     """ Allows Entities to experience the effects of gravity."""
 
+    GRAVITY = 9.8 * 8
+
     def __init__(self, owner):
         super().__init__(owner)
         # Whether the player is on solid ground or in freefall
         self.state = GravityCompState.AIR
         # Used to make sure gravity is only applied once when leaving the ground 
         self.should_apply_gravity = True 
-        self.debug = 0
+        self.debug = -1000000 
+
+    def left_ground(self):
+        """
+        Updates status of component if owner has done something to leave ground
+        """
+        self.state = GravityCompState.AIR
+        self.should_apply_gravity = True
+
+    def entered_ground(self):
+        """
+        Updates status of component if owner has done something to now be on the ground
+        """
+        self.state = GravityCompState.GROUND
+        self.should_apply_gravity = False
 
     def update(self, delta):
         self.debug+=1
-        if self.debug % 5 == 0:
+        if self.debug % 20 == 0:
             print(self.state)
-        # If in the air: Change acceleration when in air and reset it when on ground
-        if self.state == GravityCompState.AIR:
-            # Get floor tile
-            TILE_SIZE = GameMap.map_data.tilewidth
-            player_tile_x = int(self.owner.rect.midbottom[0] / TILE_SIZE)
-            player_tile_y = int((self.owner.rect.midbottom[1] + 5) / TILE_SIZE)
 
-            # Check if on ground tile
-            try: 
-                properties = GameMap.get_tile_properties(player_tile_x, player_tile_y)
-                # If they're on the ground change state and undo need to apply gravity
-                if properties and (properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value)):
-                    print('ON GROUND!')
-                    self.state = GravityCompState.GROUND
-                    self.should_apply_gravity = False 
-            except: # Out of Bounds
-                print('Out of Bounds check in Grav') # Update Acceleration for ground/air
+        # Get floor tile
+        TILE_SIZE = GameMap.map_data.tilewidth
+        player_tile_x = int(self.owner.rect.midbottom[0] / TILE_SIZE)
+        player_tile_y = int((self.owner.rect.midbottom[1] + 5) / TILE_SIZE)
+        try:
+            properties = GameMap.get_tile_properties(player_tile_x, player_tile_y)
+        except:
+            print('Out of Bounds check for Gravity Comp...')
+            properties = None
+
+        # Air -> Ground
+        if self.state == GravityCompState.AIR:
+            if properties and (properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value)):
+                print('ON GROUND!')
+                self.entered_ground()
+                 
+        # Ground -> Air
+        elif self.state == GravityCompState.GROUND:
+            if not properties:
+                print('Midair now') 
+                self.left_ground()
+                
 
         # If in the air, and needs to apply gravity
         if self.state == GravityCompState.AIR and self.should_apply_gravity:
             print('Applying Gravity!')
-            self.owner.acceleration.y = 9.8
+            self.owner.acceleration.y = self.GRAVITY
             self.should_apply_gravity = False 
         # If on the ground
         elif self.state == GravityCompState.GROUND and self.owner.acceleration.y > 0:
@@ -225,10 +246,12 @@ class PlayerComponent(Component):
         self.player_state = PlayerState.STAND
         self.power_up = PowerUp.NORMAL
         # Player Constants
-        self.MAX_RUN_SPEED = 200 
+        self.MAX_RUN_SPEED = 150 
+        self.MAX_WALK_SPEED = 50
         self.WALK_ACCELERATION = 50
         self.RUN_ACCELERATION = 100
-        self.JUMP_POWER = -30
+        self.JUMP_POWER = -60
+        self.TRACTION = 50 
         # Set Player Entity Constants
         self.owner.target_x_speed = self.MAX_RUN_SPEED
         # Create Buttons list (!) should be set before update is called
@@ -237,31 +260,29 @@ class PlayerComponent(Component):
     def update(self, delta):
         # Update with player keypresses
         # Movement
-        if self.buttons[pygame.K_a]:
-            if self.buttons[pygame.K_LSHIFT]:
-                print('runnin')
+        if self.buttons[Buttons.MOVE_LEFT.value]:
+            if self.buttons[Buttons.RUN.value]:
                 self.move(True, run=True)
             else:
-                print('walkin')
                 self.move(True, run=False)
-        if self.buttons[pygame.K_d]:
-            if self.buttons[pygame.K_LSHIFT]:
-                print('runnin')
+        if self.buttons[Buttons.MOVE_RIGHT.value]:
+            if self.buttons[Buttons.RUN.value]:
                 self.move(False, run=True)
             else:
-                print('walkin')
                 self.move(False, run=False)
+        # Apply Traction if player is not moving to kill acceleration
+        if not (self.buttons[Buttons.MOVE_LEFT.value] or self.buttons[Buttons.MOVE_RIGHT.value]):
+            if self.owner.components[GravityComponent].state == GravityCompState.GROUND:
+                self.apply_traction()
         # Crouch
-        if self.buttons[pygame.K_s]:
-            print('walking')
+        if self.buttons[Buttons.CROUCH.value]:
+            print('crouch')
             self.crouch()
         # Jumps
-        if self.buttons[pygame.K_SPACE]:
+        if self.buttons[Buttons.JUMP.value]:
             self.jump(spin=False)
-            print('jumpin')
-        if self.buttons[pygame.K_j]:
+        if self.buttons[Buttons.SPIN.value]:
             self.jump(spin=True)
-            print('spin jumpin')
             
     def jump(self, spin=False):
         """
@@ -269,9 +290,8 @@ class PlayerComponent(Component):
         :param spin: whether the player will do a spin jump
         """
         self.owner.velocity.y = self.JUMP_POWER
-        self.owner.components[GravityComponent.id_class].state = GravityCompState.AIR
+        self.owner.components[GravityComponent.id_class].left_ground()
         self.player_state = PlayerState.JUMP
-        self.owner.components[GravityComponent.id_class].state = GravityCompState.AIR
 
     def move(self, left, run=False):
         """
@@ -279,11 +299,24 @@ class PlayerComponent(Component):
         :param left: True if the player will move left. False otherwise 
         :param run: Boolean for whether the player will run instead of walk
         """
+        self.owner.target_x_speed = self.MAX_RUN_SPEED if run else self.MAX_WALK_SPEED
         if left:
             self.owner.acceleration.x = -self.RUN_ACCELERATION if run else -self.WALK_ACCELERATION
         else:
             self.owner.acceleration.x = self.RUN_ACCELERATION if run else self.WALK_ACCELERATION               
-         
+
+    def apply_traction(self):
+        """
+        Makes the player slow to a stop when not moving
+        """
+        # self.owner.target_x_speed = 0
+        tolerance = 0.5
+        if self.owner.velocity.x < -tolerance:
+            self.owner.acceleration.x = self.TRACTION
+        elif self.owner.velocity.x > tolerance:
+            self.owner.acceleration.x = -self.TRACTION
+        else:
+            self.owner.acceleration.x = 0
     
     def crouch(self):
         pass

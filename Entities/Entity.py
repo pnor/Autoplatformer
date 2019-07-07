@@ -19,8 +19,8 @@ class Entity(ABC, pygame.sprite.Sprite):
         self.velocity = Vector2()
         self.acceleration = Vector2()
         # Should be zero if player doesn't touch controls
-        self.target_x_speed = 0
-        self.target_y_speed = 0
+        self.target_x_speed = 100 
+        self.target_y_speed = 100
         # Components
         self.components = {}
 
@@ -29,8 +29,22 @@ class Entity(ABC, pygame.sprite.Sprite):
 
     @abstractmethod
     def update(self, deltatime):
+        clamp_func = lambda val, max_val, min_val: max(min(val, max_val), min_val)
+
         self.rect.move_ip(self.velocity.x * deltatime, self.velocity.y * deltatime)
         self.velocity += deltatime * self.acceleration
+
+        # clamp
+        if self.velocity.x > 0:
+            self.velocity.x = clamp_func(self.velocity.x, self.target_x_speed, 0)
+        else:
+            self.velocity.x = clamp_func(self.velocity.x, 0, -self.target_x_speed)
+
+        if self.velocity.y > 0:
+            self.velocity.y = clamp_func(self.velocity.y, self.target_y_speed, 0) 
+        else:
+            self.velocity.y = clamp_func(self.velocity.y, 0, -self.target_y_speed)
+
         # Update all components
         for component in self.components.values():
             component.update(deltatime)
