@@ -8,8 +8,9 @@ from pytmx.util_pygame import load_pygame
 
 import constants
 from Entities.Player import Player
-from Entities.Components.Components import PlayerComponent
+from Entities.Components.Components import PlayerComponent, GravityComponent, CollisionComponent
 from Map.GameMap import *
+
 
 from pygame.math import Vector2
 
@@ -174,8 +175,13 @@ class MainGame(object):
         clock = pygame.time.Clock()
         FPS = 60
 
+        debug = -100000000
+
         try:
             while self.running:
+                debug += 1
+                if debug % 20 == 0:
+                    self.print_debug_info()
                 delta = clock.tick(FPS) / 1000.
                 # Handle Events
                 self.handle_events()
@@ -201,6 +207,18 @@ class MainGame(object):
         pygame.transform.scale(self.temp_surface, self.screen.get_size(), self.screen)
 
         pygame.display.flip()
+
+
+    def print_debug_info(self):
+        print('~~~~~~~~~~~~~')
+        print('Movement Info ~~~')
+        print('Veloc: ' + str(self.player.velocity))
+        print('Accel: ' + str(self.player.acceleration))
+        print('State Info ~~~')
+        print('Grav State: ' + str(self.player.components[GravityComponent].state))
+        print('Player State: ' + str(self.player.components[PlayerComponent].state))
+        print('~~~~~~~~~~~~~\n')
+
 
 
 if __name__ == '__main__' : 

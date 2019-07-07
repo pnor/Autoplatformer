@@ -20,7 +20,7 @@ class Entity(ABC, pygame.sprite.Sprite):
         self.acceleration = Vector2()
         # Should be zero if player doesn't touch controls
         self.target_x_speed = 100 
-        self.target_y_speed = 100
+        self.target_y_speed = 1000
         # Components
         self.components = {}
 

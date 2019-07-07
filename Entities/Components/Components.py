@@ -107,9 +107,9 @@ class CollisionComponent(Component):
 
         tolerance = 1
         if net_fix_vector.length() > tolerance:
-            print('NET FIX VELCOTIY WAS...')
-            print(net_fix_vector)
-            print('')
+            # print('NET FIX VELCOTIY WAS...')
+            # print(net_fix_vector)
+            # print('')
             # Apply net fix vector 
             owner_body.left += net_fix_vector.x
             owner_body.top += net_fix_vector.y
@@ -166,7 +166,7 @@ class CollisionComponent(Component):
 class GravityComponent(Component):
     """ Allows Entities to experience the effects of gravity."""
 
-    GRAVITY = 9.8 * 8
+    GRAVITY = 9.8 * 50 
 
     def __init__(self, owner):
         super().__init__(owner)
@@ -174,7 +174,6 @@ class GravityComponent(Component):
         self.state = GravityCompState.AIR
         # Used to make sure gravity is only applied once when leaving the ground 
         self.should_apply_gravity = True 
-        self.debug = -1000000 
 
     def left_ground(self):
         """
@@ -191,9 +190,6 @@ class GravityComponent(Component):
         self.should_apply_gravity = False
 
     def update(self, delta):
-        self.debug+=1
-        if self.debug % 20 == 0:
-            print(self.state)
 
         # Get floor tile
         TILE_SIZE = GameMap.map_data.tilewidth
@@ -208,13 +204,13 @@ class GravityComponent(Component):
         # Air -> Ground
         if self.state == GravityCompState.AIR:
             if properties and (properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value)):
-                print('ON GROUND!')
+                # print('ON GROUND!')
                 self.entered_ground()
                  
         # Ground -> Air
         elif self.state == GravityCompState.GROUND:
             if not properties:
-                print('Midair now') 
+                # print('Midair now') 
                 self.left_ground()
                 
 
@@ -243,15 +239,15 @@ class PlayerComponent(Component):
     def __init__(self, owner):
         super().__init__(owner)
         # Player State
-        self.player_state = PlayerState.STAND
+        self.state = PlayerState.STAND
         self.power_up = PowerUp.NORMAL
         # Player Constants
-        self.MAX_RUN_SPEED = 150 
-        self.MAX_WALK_SPEED = 50
-        self.WALK_ACCELERATION = 50
-        self.RUN_ACCELERATION = 100
-        self.JUMP_POWER = -60
-        self.TRACTION = 50 
+        self.MAX_RUN_SPEED = 200 
+        self.MAX_WALK_SPEED = 90
+        self.WALK_ACCELERATION = 100
+        self.RUN_ACCELERATION = 150
+        self.JUMP_POWER = -300
+        self.TRACTION = 120 
         # Set Player Entity Constants
         self.owner.target_x_speed = self.MAX_RUN_SPEED
         # Create Buttons list (!) should be set before update is called
@@ -291,7 +287,7 @@ class PlayerComponent(Component):
         """
         self.owner.velocity.y = self.JUMP_POWER
         self.owner.components[GravityComponent.id_class].left_ground()
-        self.player_state = PlayerState.JUMP
+        self.state = PlayerState.JUMP
 
     def move(self, left, run=False):
         """
