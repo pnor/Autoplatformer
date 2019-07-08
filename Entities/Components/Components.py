@@ -69,8 +69,8 @@ class CollisionComponent(Component):
         positive_x = 0
         negative_x = 0
 
-        for i in range(tile_origin_x, tile_origin_end_x + 1):
-            for j in range(tile_origin_y, tile_origin_end_y + 1):
+        for i in range(tile_origin_x, tile_origin_end_x):
+            for j in range(tile_origin_y, tile_origin_end_y):
                 # Get tile, skip if not existent/has no property
                 try: 
                     properties = GameMap.get_tile_properties(i, j)
@@ -96,20 +96,17 @@ class CollisionComponent(Component):
                 elif properties.get(MapInfo.SEMISOLID.value):
                     print('Near: SEMISOLID')
                     # bbox = 
-                elif properties.get(MapInfo.SLOPE_LEFT.value):
-                   print('Near: SLOPE LEFT') 
-                elif properties.get(MapInfo.SLOPE_RIGHT.value):
-                    print('Near: SLOPE RIGHT')
 
         
         # Create collision fix vector
         net_fix_vector =  Vector2(positive_x, positive_y) + Vector2(negative_x, negative_y)
 
-        tolerance = 1
+        tolerance =  0.3
         if net_fix_vector.length() > tolerance:
-            # print('NET FIX VELCOTIY WAS...')
-            # print(net_fix_vector)
-            # print('')
+            if net_fix_vector.length() > 30:
+                print('Was big: Net Fix Vector Was...')
+                print(net_fix_vector)
+                print('')
             # Apply net fix vector 
             owner_body.left += net_fix_vector.x
             owner_body.top += net_fix_vector.y
@@ -138,12 +135,12 @@ class CollisionComponent(Component):
         # print('owner top - bbox bottom: ' + str(owner_top_bbox_bottom))
         # print('owner bottom- bbox top: ' + str(owner_bottom_bbox_top))
         # Top Collision
-        if owner_top_bbox_bottom < 0 and -owner_top_bbox_bottom < bbox.height * 0.2:
+        if owner_top_bbox_bottom < 0 and self.owner.velocity.y < 0:
             # print('TOP COLLISION') 
             fix_vector.y = -owner_top_bbox_bottom
 
         # Bottom Collision
-        elif owner_bottom_bbox_top < 0 and -owner_bottom_bbox_top < bbox.height * 0.2:
+        elif owner_bottom_bbox_top < 0 and self.owner.velocity.y > 0:
             # print('BOTTOM COLLISION') 
             fix_vector.y = owner_bottom_bbox_top
 
@@ -151,11 +148,11 @@ class CollisionComponent(Component):
         owner_left_bbox_right = owner_body.left - bbox.right
         owner_right_bbox_left = bbox.left - owner_body.right
         # Left Collision
-        if owner_left_bbox_right < 0 and -owner_left_bbox_right < bbox.width * 0.2:
+        if owner_left_bbox_right < 0 and self.owner.velocity.x < 0:
             # print('LEFT COLLISION')
             fix_vector.x = -owner_left_bbox_right
         # Right Collision
-        elif owner_right_bbox_left < 0 and -owner_right_bbox_left < bbox.width * 0.2:
+        elif owner_right_bbox_left < 0 and self.owner.velocity.x > 0:
             # print('RIGHT COLLISION')
             fix_vector.x = owner_right_bbox_left 
 
