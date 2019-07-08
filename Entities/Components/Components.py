@@ -58,6 +58,7 @@ class CollisionComponent(Component):
         owner_body = self.owner.rect
         TILE_SIZE = map_data.tilewidth
 
+        bboxes = []
         tile_origin_x = int(owner_body.topleft[0] / TILE_SIZE) - 1
         tile_origin_y = int(owner_body.topleft[1] / TILE_SIZE) - 1
         tile_origin_end_x = int(owner_body.topright[0] / TILE_SIZE) + 1 
@@ -82,20 +83,20 @@ class CollisionComponent(Component):
                 if properties.get(MapInfo.SOLID.value):
                     # print('Near: SOLID')
                     bbox = pygame.Rect((i * TILE_SIZE, j * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
+                    bboxes.append(bbox)
 
                     if bbox.colliderect(owner_body):
                         fix_velocity = self.handle_collision(bbox)
-                        negative_x = min(negative_x, fix_velocity.x)
-                        positive_x = max(positive_x, fix_velocity.x)
-                        negative_y = min(negative_y, fix_velocity.y)
-                        positive_y = max(positive_y, fix_velocity.y)
+                        negative_x = max(negative_x, fix_velocity.x)
+                        positive_x = min(positive_x, fix_velocity.x)
+                        negative_y = max(negative_y, fix_velocity.y)
+                        positive_y = min(positive_y, fix_velocity.y)
                         # print('x: ' + str(negative_x) + ' - ' + str(positive_x))
                         # print('y: ' + str(negative_y) + ' - ' + str(positive_y))
 
                 # Semisolids 
                 elif properties.get(MapInfo.SEMISOLID.value):
                     print('Near: SEMISOLID')
-                    # bbox = 
 
         
         # Create collision fix vector
@@ -108,8 +109,9 @@ class CollisionComponent(Component):
                 print(net_fix_vector)
                 print('')
             # Apply net fix vector 
-            owner_body.left += net_fix_vector.x
             owner_body.top += net_fix_vector.y
+            if bbox and owner_body.collidelistall(bboxes): # If still colliding, do x
+                owner_body.left += net_fix_vector.x
             # Kill velocity
             self.owner.velocity.x = 0
             self.owner.velocity.y = 0 
