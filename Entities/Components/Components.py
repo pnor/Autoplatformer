@@ -1,49 +1,19 @@
-from abc import ABC, abstractmethod
+import time
 
 import pygame
 from pygame.math import Vector2
 from enum import Enum
 
-from Entities.Entity import Entity
 from Map.GameMap import *
 from Input.Buttons import Buttons
+import Util
+
+from Entities.Components.BaseComponents import Component
 
 
 """
 Components for Entities. Components define the traits of all entities in the game, based on what is stored in an Entity's componenet list
 """
-
-class Component(ABC):
-    """ Abstraction of the basic component. All components have an owner and an update method"""
-
-    
-    def __init__(self, owner):
-        assert isinstance(owner, Entity), 'owner is of type ' + str(type(owner)) + ' which is not a subclass of Entity'
-        self.owner = owner
-        # Set id type of subclass so it can be used key for Entity's map
-        print('!')
-        self.__set_id_class()
-
-    @abstractmethod
-    def update(self, delta):
-        """ Update entity using information stored in component"""
-        pass
-
-    @classmethod
-    def __set_id_class(cls):
-        """ Sets the id_class of the subclass Component object with the class object of the Component
-        """
-        cls.id_class = cls
-
-    @classmethod
-    @property
-    def id_class(cls):
-        """
-        Return class object of the Component. Used to identify Components and retrieve components from
-        an Entity's Component dict without instantiating a new one each time
-        """
-        return cls.id_class
-            
 
 class CollisionComponent(Component):
     """ Allows Entities to collide with other entities with Collision Components"""
@@ -52,6 +22,8 @@ class CollisionComponent(Component):
         super().__init__(owner)
 
     def update(self, delta):
+        return
+
         # Check collision with world
         # Check collision with other entities 
         map_data = GameMap.map_data 
@@ -91,8 +63,6 @@ class CollisionComponent(Component):
                         positive_x = min(positive_x, fix_velocity.x)
                         negative_y = max(negative_y, fix_velocity.y)
                         positive_y = min(positive_y, fix_velocity.y)
-                        # print('x: ' + str(negative_x) + ' - ' + str(positive_x))
-                        # print('y: ' + str(negative_y) + ' - ' + str(positive_y))
 
                 # Semisolids 
                 elif properties.get(MapInfo.SEMISOLID.value):
@@ -104,17 +74,41 @@ class CollisionComponent(Component):
 
         tolerance =  0.3
         if net_fix_vector.length() > tolerance:
-            if net_fix_vector.length() > 30:
-                print('Was big: Net Fix Vector Was...')
-                print(net_fix_vector)
-                print('')
-            # Apply net fix vector 
-            owner_body.top += net_fix_vector.y
-            if bbox and owner_body.collidelistall(bboxes): # If still colliding, do x
+            # if net_fix_vector.length() > 30:
+            #     print('Was big: Net Fix Vector Was...')
+            #     print(net_fix_vector)
+            #     print('')
+            # Apply net fix vector (and stop velocities)
+            # Old Way
+            # owner_body.top += net_fix_vector.y
+            # owner_body.left += net_fix_vector.x
+            # self.owner.velocity.x = 0
+            # self.owner.velocity.y = 0
+
+            # Experim Way
+            # print(net_fix_vector)
+            horiz_larger = net_fix_vector.x >= net_fix_vector.y
+            if horiz_larger and self.owner.velocity.x > tolerance or self.owner.velocity.x < -tolerance:
+                owner_body.top += net_fix_vector.y
+                if net_fix_vector.y > 0:
+                    self.owner.velocity.y = 0
+                if bbox and owner_body.collidelistall(bboxes): # If still colliding, do x
+                    owner_body.left += net_fix_vector.x
+                    self.owner.velocity.x = 0
+            elif self.owner.velocity.y > tolerance or self.owner.velocity.y < -tolerance:
                 owner_body.left += net_fix_vector.x
-            # Kill velocity
-            self.owner.velocity.x = 0
-            self.owner.velocity.y = 0 
+                if net_fix_vector.x > 0:
+                    self.owner.velocity.x = 0
+                if bbox and owner_body.collidelistall(bboxes): # If still colliding, do x
+                    owner_body.top += net_fix_vector.y
+                    self.owner.velocity.y = 0
+
+            
+            if bbox and owner_body.collidelistall(bboxes):
+                print('| | | | |')
+                print('... But a collision persists')
+                print('| | | | |')
+
         elif net_fix_vector.length() > 0 :
             print('Was too small to do anything...')
             print('fix vector: ' + str(net_fix_vector))
@@ -129,6 +123,12 @@ class CollisionComponent(Component):
         fix_vector = Vector2()
 
         # Y-component
+        # Dont do vertical collision if it has gravity and is standing on ground
+        grav_comp = self.owner.components.get(GravityComponent.id_class) 
+        on_ground = grav_comp and grav_comp.state == GravityCompState.GROUND
+
+        # TODO put in vert collision with on_ground!!!!!
+
         # if either are negative, a collision may of happened
         # If either's abs is larger than the height, its NOT a collision 
         # print('owner size: ' + str(owner_body.size))
@@ -137,11 +137,13 @@ class CollisionComponent(Component):
         # print('owner top - bbox bottom: ' + str(owner_top_bbox_bottom))
         # print('owner bottom- bbox top: ' + str(owner_bottom_bbox_top))
         # Top Collision
+        # if owner_top_bbox_bottom < 0 and -owner_top_bbox_bottom < bbox.height and self.owner.velocity.y < 0:
         if owner_top_bbox_bottom < 0 and self.owner.velocity.y < 0:
             # print('TOP COLLISION') 
             fix_vector.y = -owner_top_bbox_bottom
 
         # Bottom Collision
+        # elif owner_bottom_bbox_top < 0 and -owner_bottom_bbox_top < bbox.height and self.owner.velocity.y > 0:
         elif owner_bottom_bbox_top < 0 and self.owner.velocity.y > 0:
             # print('BOTTOM COLLISION') 
             fix_vector.y = owner_bottom_bbox_top
@@ -159,6 +161,112 @@ class CollisionComponent(Component):
             fix_vector.x = owner_right_bbox_left 
 
         return fix_vector
+
+    def move_without_collision(self, deltatime):
+        """
+        Makes movement steps move without intersecting nearby objects
+        """
+        map_data = GameMap.map_data 
+        TILE_SIZE = map_data.tilewidth
+        owner_rect = self.owner.rect
+        delta_movement = self.owner.velocity * deltatime
+        final_movement_veloc = Vector2(delta_movement.x, delta_movement.y) 
+        tolerance = 0.
+
+        direction = 0
+        start_tile  = -999 
+        target_tile = -999
+        debug_fixed = False
+
+        # X
+        if self.owner.velocity.x > tolerance: # Right
+            start_tile = int(owner_rect.right / TILE_SIZE)
+            target_tile = int((owner_rect.right + delta_movement.x) / TILE_SIZE)
+            direction = 1 # Right
+        elif self.owner.velocity.x < -tolerance: # Left
+            start_tile = int(owner_rect.left / TILE_SIZE)
+            target_tile = int((owner_rect.left + delta_movement.x) / TILE_SIZE)
+            direction = -1 # Left
+        start_height = int(owner_rect.top / TILE_SIZE)
+        end_height = int(owner_rect.bottom / TILE_SIZE)
+
+        if direction != 0:
+            x_range = range(start_tile, target_tile + 1, direction) if direction == 1 else range(target_tile , start_tile- 1 , direction)
+            for j in range(start_height, end_height): # Height
+                for i in x_range: # Width
+                    # Get tile, skip if not existent/has no property
+                    try: 
+                        properties = GameMap.get_tile_properties(i, j)
+                        if not properties: continue
+                    except:
+                        continue
+
+                    if properties and properties.get(MapInfo.SOLID.value):
+                        self.owner.velocity.x = 0
+                        bbox = pygame.Rect((i * TILE_SIZE, j * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
+                        if direction == 1: # Right
+                            smallest_dist = min(bbox.left - owner_rect.right, delta_movement.x)
+                            final_movement_veloc.x = min(smallest_dist, final_movement_veloc.x)
+                            print('fixing: RIGHT')
+                        else: # Left
+                            smallest_dist = max(bbox.right - owner_rect.left, delta_movement.x)
+                            final_movement_veloc.x = max(smallest_dist, final_movement_veloc.x)
+                            print('fixing: LEFT')
+                        debug_fixed = True
+                        break
+        else:
+            final_movement_veloc.x = delta_movement.x
+
+        self.owner.rect.move_ip(final_movement_veloc.x, 0)
+
+
+        # Y
+        owner_rect = self.owner.rect
+        direction = 0
+        start_tile = -999
+        target_tile = -999
+
+        # if debug_fixed:
+        #     time.sleep(0.3)
+
+        if self.owner.velocity.y > tolerance: # Down 
+            start_tile = int(owner_rect.bottom / TILE_SIZE)
+            target_tile = int((owner_rect.bottom + delta_movement.y) / TILE_SIZE)
+            direction = 1 # Down 
+        elif self.owner.velocity.y < -tolerance: # Up 
+            start_tile = int(owner_rect.top / TILE_SIZE)
+            target_tile = int((owner_rect.top + delta_movement.y) / TILE_SIZE)
+            direction = -1 # Up 
+        start_width = int((owner_rect.left + 5) / TILE_SIZE)
+        end_width = int((owner_rect.right - 5) / TILE_SIZE)
+
+        if direction != 0:
+            y_range = range(start_tile - 1, target_tile + 1, direction) if direction == 1 else range(target_tile + 1, start_height - 1, direction)
+            for i in range(start_width, end_width + 1):
+                for j in y_range:
+                    # Get tile, skip if not existent/has no property
+                    try: 
+                        properties = GameMap.get_tile_properties(i, j)
+                        if not properties: continue
+                    except:
+                        continue
+
+                    if properties and properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value):
+                        bbox = pygame.Rect((i * TILE_SIZE, j * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
+                        self.owner.velocity.y = 0
+                        if direction == 1: # Down 
+                            smallest_dist = min(bbox.top - owner_rect.bottom, delta_movement.y)
+                            final_movement_veloc.y = min(smallest_dist, final_movement_veloc.y)
+                            print('fixing: DOWN')
+                        else: # Up 
+                            smallest_dist = max(bbox.bottom - owner_rect.top, delta_movement.y)
+                            final_movement_veloc.y = max(smallest_dist, final_movement_veloc.y)
+                            print('fixing: UP')
+                        break
+        else:
+            final_movement_veloc.y = delta_movement.y
+
+        self.owner.rect.move_ip(0, final_movement_veloc.y)
 
 
                  
@@ -246,7 +354,8 @@ class PlayerComponent(Component):
         self.WALK_ACCELERATION = 100
         self.RUN_ACCELERATION = 150
         self.JUMP_POWER = -300
-        self.TRACTION = 120 
+        self.TRACTION = 180 
+        self.AIR_TRACTION = 80 
         # Set Player Entity Constants
         self.owner.target_x_speed = self.MAX_RUN_SPEED
         # Create Buttons list (!) should be set before update is called
@@ -267,8 +376,7 @@ class PlayerComponent(Component):
                 self.move(False, run=False)
         # Apply Traction if player is not moving to kill acceleration
         if not (self.buttons[Buttons.MOVE_LEFT.value] or self.buttons[Buttons.MOVE_RIGHT.value]):
-            if self.owner.components[GravityComponent].state == GravityCompState.GROUND:
-                self.apply_traction()
+            self.apply_traction()
         # Crouch
         if self.buttons[Buttons.CROUCH.value]:
             print('crouch')
@@ -304,12 +412,15 @@ class PlayerComponent(Component):
         """
         Makes the player slow to a stop when not moving
         """
-        # self.owner.target_x_speed = 0
+        if self.owner.components[GravityComponent].state == GravityCompState.GROUND:
+            traction = self.TRACTION
+        else:
+            traction = self.AIR_TRACTION
         tolerance = 0.5
         if self.owner.velocity.x < -tolerance:
-            self.owner.acceleration.x = self.TRACTION
+            self.owner.acceleration.x = traction
         elif self.owner.velocity.x > tolerance:
-            self.owner.acceleration.x = -self.TRACTION
+            self.owner.acceleration.x = -traction
         else:
             self.owner.acceleration.x = 0
     

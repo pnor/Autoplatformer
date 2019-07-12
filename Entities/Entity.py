@@ -3,6 +3,7 @@ from pygame.locals import *
 from pygame.math import Vector2
 from abc import ABC, abstractmethod
 from enum import Enum
+from Entities.Components.Components import CollisionComponent
 
 class Entity(ABC, pygame.sprite.Sprite):
     """
@@ -31,7 +32,12 @@ class Entity(ABC, pygame.sprite.Sprite):
     def update(self, deltatime):
         clamp_func = lambda val, max_val, min_val: max(min(val, max_val), min_val)
 
-        self.rect.move_ip(self.velocity.x * deltatime, self.velocity.y * deltatime)
+        # Velocity
+        if self.components.get(CollisionComponent.id_class):
+            self.components.get(CollisionComponent.id_class).move_without_collision(deltatime)
+        else:
+            self.rect.move_ip(self.velocity.x * deltatime, self.velocity.y * deltatime)
+        # Acceleration
         self.velocity += deltatime * self.acceleration
 
         # clamp

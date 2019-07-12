@@ -10,13 +10,14 @@ import constants
 from Entities.Player import Player
 from Entities.Components.Components import PlayerComponent, GravityComponent, CollisionComponent
 from Map.GameMap import *
-
+import Util
 
 from pygame.math import Vector2
 
 
 class MainGame(object):
     # Game Constants
+    # SCREENRECT = Rect(0, 0, 1200, 720)
     SCREENRECT = Rect(0, 0, 800, 480)
 
     # Game Variables 
@@ -106,7 +107,6 @@ class MainGame(object):
         # pygame.event.get() 
 
         poll = pygame.event.poll
-        clamp_func = lambda val, max_val, min_val: max(min(val, max_val), min_val)
 
         event = poll()
         keys = pygame.key.get_pressed()
@@ -115,10 +115,10 @@ class MainGame(object):
             if event.type == KEYDOWN:
                 # Zoom
                 if event.key == K_EQUALS:
-                    self.map_layer.zoom = clamp_func(self.map_layer.zoom + 0.25, 999, 0.24)
+                    self.map_layer.zoom = Util.clamp(self.map_layer.zoom + 0.25, 0.24, 999)
                     print('zoom~')
                 elif event.key == K_MINUS:
-                    self.map_layer.zoom = clamp_func(self.map_layer.zoom - 0.25, 999, 0.24)
+                    self.map_layer.zoom = Util.clamp(self.map_layer.zoom - 0.25, 0.24, 999)
                     print('woom.')
                     # Movement
 
@@ -149,6 +149,7 @@ class MainGame(object):
         #     print(self.player.velocity)
         if keys[K_0]:
             self.player.velocity = Vector2(0, 0)
+            self.player.acceleration = Vector2(0, 0)
             print('zeroing velocity: ' + str(self.player.velocity))
         if keys[K_8]:
             print('Moving to top left')
@@ -180,7 +181,7 @@ class MainGame(object):
         try:
             while self.running:
                 debug += 1
-                if debug % 20 == 0:
+                if debug % 70 == 0:
                     self.print_debug_info()
                 delta = clock.tick(FPS) / 1000.
                 # Handle Events
