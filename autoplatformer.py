@@ -180,9 +180,10 @@ class MainGame(object):
 
         try:
             while self.running:
-                debug += 1
-                if debug % 70 == 0:
-                    self.print_debug_info()
+                # debug += 1
+                # if debug % 40 == 0:
+                #     self.print_debug_info()
+
                 delta = clock.tick(FPS) / 1000.
                 # Handle Events
                 self.handle_events()

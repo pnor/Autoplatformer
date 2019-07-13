@@ -1,5 +1,3 @@
-import time
-
 import pygame
 from pygame.math import Vector2
 from enum import Enum
@@ -22,145 +20,7 @@ class CollisionComponent(Component):
         super().__init__(owner)
 
     def update(self, delta):
-        return
-
-        # Check collision with world
-        # Check collision with other entities 
-        map_data = GameMap.map_data 
-        owner_body = self.owner.rect
-        TILE_SIZE = map_data.tilewidth
-
-        bboxes = []
-        tile_origin_x = int(owner_body.topleft[0] / TILE_SIZE) - 1
-        tile_origin_y = int(owner_body.topleft[1] / TILE_SIZE) - 1
-        tile_origin_end_x = int(owner_body.topright[0] / TILE_SIZE) + 1 
-        tile_origin_end_y = int(owner_body.bottomleft[1] / TILE_SIZE) + 1
-
-        # Used to create total collision fix vector
-        positive_y = 0
-        negative_y = 0
-        positive_x = 0
-        negative_x = 0
-
-        for i in range(tile_origin_x, tile_origin_end_x):
-            for j in range(tile_origin_y, tile_origin_end_y):
-                # Get tile, skip if not existent/has no property
-                try: 
-                    properties = GameMap.get_tile_properties(i, j)
-                    if not properties: continue
-                except:
-                    continue
-
-                # Solids 
-                if properties.get(MapInfo.SOLID.value):
-                    # print('Near: SOLID')
-                    bbox = pygame.Rect((i * TILE_SIZE, j * TILE_SIZE), (TILE_SIZE, TILE_SIZE))
-                    bboxes.append(bbox)
-
-                    if bbox.colliderect(owner_body):
-                        fix_velocity = self.handle_collision(bbox)
-                        negative_x = max(negative_x, fix_velocity.x)
-                        positive_x = min(positive_x, fix_velocity.x)
-                        negative_y = max(negative_y, fix_velocity.y)
-                        positive_y = min(positive_y, fix_velocity.y)
-
-                # Semisolids 
-                elif properties.get(MapInfo.SEMISOLID.value):
-                    print('Near: SEMISOLID')
-
-        
-        # Create collision fix vector
-        net_fix_vector =  Vector2(positive_x, positive_y) + Vector2(negative_x, negative_y)
-
-        tolerance =  0.3
-        if net_fix_vector.length() > tolerance:
-            # if net_fix_vector.length() > 30:
-            #     print('Was big: Net Fix Vector Was...')
-            #     print(net_fix_vector)
-            #     print('')
-            # Apply net fix vector (and stop velocities)
-            # Old Way
-            # owner_body.top += net_fix_vector.y
-            # owner_body.left += net_fix_vector.x
-            # self.owner.velocity.x = 0
-            # self.owner.velocity.y = 0
-
-            # Experim Way
-            # print(net_fix_vector)
-            horiz_larger = net_fix_vector.x >= net_fix_vector.y
-            if horiz_larger and self.owner.velocity.x > tolerance or self.owner.velocity.x < -tolerance:
-                owner_body.top += net_fix_vector.y
-                if net_fix_vector.y > 0:
-                    self.owner.velocity.y = 0
-                if bbox and owner_body.collidelistall(bboxes): # If still colliding, do x
-                    owner_body.left += net_fix_vector.x
-                    self.owner.velocity.x = 0
-            elif self.owner.velocity.y > tolerance or self.owner.velocity.y < -tolerance:
-                owner_body.left += net_fix_vector.x
-                if net_fix_vector.x > 0:
-                    self.owner.velocity.x = 0
-                if bbox and owner_body.collidelistall(bboxes): # If still colliding, do x
-                    owner_body.top += net_fix_vector.y
-                    self.owner.velocity.y = 0
-
-            
-            if bbox and owner_body.collidelistall(bboxes):
-                print('| | | | |')
-                print('... But a collision persists')
-                print('| | | | |')
-
-        elif net_fix_vector.length() > 0 :
-            print('Was too small to do anything...')
-            print('fix vector: ' + str(net_fix_vector))
-
-    def handle_collision(self, bbox):
-        """ 
-        Resolves collisions by moving the owner
-        :param bbox: Bounding box of tile
-         REWRITE!
-        """
-        owner_body = self.owner.rect
-        fix_vector = Vector2()
-
-        # Y-component
-        # Dont do vertical collision if it has gravity and is standing on ground
-        grav_comp = self.owner.components.get(GravityComponent.id_class) 
-        on_ground = grav_comp and grav_comp.state == GravityCompState.GROUND
-
-        # TODO put in vert collision with on_ground!!!!!
-
-        # if either are negative, a collision may of happened
-        # If either's abs is larger than the height, its NOT a collision 
-        # print('owner size: ' + str(owner_body.size))
-        owner_top_bbox_bottom = owner_body.top - bbox.bottom  
-        owner_bottom_bbox_top = bbox.top - owner_body.bottom
-        # print('owner top - bbox bottom: ' + str(owner_top_bbox_bottom))
-        # print('owner bottom- bbox top: ' + str(owner_bottom_bbox_top))
-        # Top Collision
-        # if owner_top_bbox_bottom < 0 and -owner_top_bbox_bottom < bbox.height and self.owner.velocity.y < 0:
-        if owner_top_bbox_bottom < 0 and self.owner.velocity.y < 0:
-            # print('TOP COLLISION') 
-            fix_vector.y = -owner_top_bbox_bottom
-
-        # Bottom Collision
-        # elif owner_bottom_bbox_top < 0 and -owner_bottom_bbox_top < bbox.height and self.owner.velocity.y > 0:
-        elif owner_bottom_bbox_top < 0 and self.owner.velocity.y > 0:
-            # print('BOTTOM COLLISION') 
-            fix_vector.y = owner_bottom_bbox_top
-
-        # X-componenet
-        owner_left_bbox_right = owner_body.left - bbox.right
-        owner_right_bbox_left = bbox.left - owner_body.right
-        # Left Collision
-        if owner_left_bbox_right < 0 and self.owner.velocity.x < 0:
-            # print('LEFT COLLISION')
-            fix_vector.x = -owner_left_bbox_right
-        # Right Collision
-        elif owner_right_bbox_left < 0 and self.owner.velocity.x > 0:
-            # print('RIGHT COLLISION')
-            fix_vector.x = owner_right_bbox_left 
-
-        return fix_vector
+        pass
 
     def move_without_collision(self, deltatime):
         """
@@ -176,7 +36,6 @@ class CollisionComponent(Component):
         direction = 0
         start_tile  = -999 
         target_tile = -999
-        debug_fixed = False
 
         # X
         if self.owner.velocity.x > tolerance: # Right
@@ -207,12 +66,9 @@ class CollisionComponent(Component):
                         if direction == 1: # Right
                             smallest_dist = min(bbox.left - owner_rect.right, delta_movement.x)
                             final_movement_veloc.x = min(smallest_dist, final_movement_veloc.x)
-                            print('fixing: RIGHT')
                         else: # Left
                             smallest_dist = max(bbox.right - owner_rect.left, delta_movement.x)
                             final_movement_veloc.x = max(smallest_dist, final_movement_veloc.x)
-                            print('fixing: LEFT')
-                        debug_fixed = True
                         break
         else:
             final_movement_veloc.x = delta_movement.x
@@ -226,8 +82,6 @@ class CollisionComponent(Component):
         start_tile = -999
         target_tile = -999
 
-        # if debug_fixed:
-        #     time.sleep(0.3)
 
         if self.owner.velocity.y > tolerance: # Down 
             start_tile = int(owner_rect.bottom / TILE_SIZE)
@@ -257,18 +111,14 @@ class CollisionComponent(Component):
                         if direction == 1: # Down 
                             smallest_dist = min(bbox.top - owner_rect.bottom, delta_movement.y)
                             final_movement_veloc.y = min(smallest_dist, final_movement_veloc.y)
-                            print('fixing: DOWN')
                         else: # Up 
                             smallest_dist = max(bbox.bottom - owner_rect.top, delta_movement.y)
                             final_movement_veloc.y = max(smallest_dist, final_movement_veloc.y)
-                            print('fixing: UP')
                         break
         else:
             final_movement_veloc.y = delta_movement.y
 
         self.owner.rect.move_ip(0, final_movement_veloc.y)
-
-
                  
 class GravityComponent(Component):
     """ Allows Entities to experience the effects of gravity."""
@@ -311,24 +161,20 @@ class GravityComponent(Component):
         # Air -> Ground
         if self.state == GravityCompState.AIR:
             if properties and (properties.get(MapInfo.SOLID.value) or properties.get(MapInfo.SEMISOLID.value)):
-                # print('ON GROUND!')
                 self.entered_ground()
                  
         # Ground -> Air
         elif self.state == GravityCompState.GROUND:
             if not properties:
-                # print('Midair now') 
                 self.left_ground()
                 
 
         # If in the air, and needs to apply gravity
         if self.state == GravityCompState.AIR and self.should_apply_gravity:
-            print('Applying Gravity!')
             self.owner.acceleration.y = self.GRAVITY
             self.should_apply_gravity = False 
         # If on the ground
         elif self.state == GravityCompState.GROUND and self.owner.acceleration.y > 0:
-            # print('Stopping Accel from Gravity')
             self.owner.acceleration.y = 0 
             self.should_apply_gravity = False
 
@@ -346,20 +192,35 @@ class PlayerComponent(Component):
     def __init__(self, owner):
         super().__init__(owner)
         # Player State
-        self.state = PlayerState.STAND
-        self.power_up = PowerUp.NORMAL
+        self.state = PlayerState.STAND # Describes what player is doing
+        self.power_up = PowerUp.NORMAL # Power Up
+        # Internal Player Variables
+        self._jump_time = 0 # Counts how long the player has jumped in a single jump
+        self._cur_jump = 0 # Describes how many jumps the player has left
+        self._no_jump = False # Whether the player can jump
+        self._hold_jump = False # Whether a jump button is being held
         # Player Constants
         self.MAX_RUN_SPEED = 200 
-        self.MAX_WALK_SPEED = 90
-        self.WALK_ACCELERATION = 100
+        self.MAX_WALK_SPEED = 90 
+        self.WALK_ACCELERATION = 100  
         self.RUN_ACCELERATION = 150
         self.JUMP_POWER = -300
         self.TRACTION = 180 
         self.AIR_TRACTION = 80 
+        self.NUMBER_JUMPS = 2
+        self.JUMP_DURATION = 0.3
         # Set Player Entity Constants
         self.owner.target_x_speed = self.MAX_RUN_SPEED
         # Create Buttons list (!) should be set before update is called
         self.buttons = [] 
+
+    # Override
+    def was_added(self):
+        """ 
+        Checks to see if Entity has necessary Components (Gravity, Collision)
+        """ 
+        assert self.owner.components.get(GravityComponent.id_class), "Player missing Gravity Component"
+        assert self.owner.components.get(CollisionComponent.id_class), "Player missing Collision Component"
 
     def update(self, delta):
         # Update with player keypresses
@@ -382,19 +243,41 @@ class PlayerComponent(Component):
             print('crouch')
             self.crouch()
         # Jumps
-        if self.buttons[Buttons.JUMP.value]:
-            self.jump(spin=False)
-        if self.buttons[Buttons.SPIN.value]:
-            self.jump(spin=True)
+        if not self._no_jump:
+            if self.buttons[Buttons.JUMP.value]:
+                self.jump(delta, spin=False)
+            elif self.buttons[Buttons.SPIN.value]:
+                self.jump(spin=True)
+            elif self.state == PlayerState.JUMP or self.state == PlayerState.SPIN:
+                if self._hold_jump:
+                    self.increment_jump()
+                self._hold_jump = False
+                if self._cur_jump >= self.NUMBER_JUMPS:
+                    self._no_jump = True
+
+        # Update States
+        if self.owner.components[GravityComponent.id_class].state == GravityCompState.GROUND:
+            self.state = PlayerState.STAND
+            self.reset_jumps()
+        tolerance = 0.5
+        if self.state != PlayerState.STAND and self.owner.velocity.length() < tolerance:
+            self.state = PlayerState.WALK
+        
             
-    def jump(self, spin=False):
+    def jump(self, deltatime, spin=False):
         """
         Makes the player jump.
+        :param deltatime: change in time (passed from update)
         :param spin: whether the player will do a spin jump
         """
-        self.owner.velocity.y = self.JUMP_POWER
-        self.owner.components[GravityComponent.id_class].left_ground()
-        self.state = PlayerState.JUMP
+        if self._no_jump: return 
+
+        self._jump_time += deltatime
+        self._hold_jump = True
+        if self._jump_time <= self.JUMP_DURATION:
+            self.owner.velocity.y = self.JUMP_POWER
+            self.owner.components[GravityComponent.id_class].left_ground()
+            self.state = PlayerState.JUMP
 
     def move(self, left, run=False):
         """
@@ -403,6 +286,7 @@ class PlayerComponent(Component):
         :param run: Boolean for whether the player will run instead of walk
         """
         self.owner.target_x_speed = self.MAX_RUN_SPEED if run else self.MAX_WALK_SPEED
+        self.state = PlayerState.RUN if run else PlayerState.WALK
         if left:
             self.owner.acceleration.x = -self.RUN_ACCELERATION if run else -self.WALK_ACCELERATION
         else:
@@ -426,6 +310,19 @@ class PlayerComponent(Component):
     
     def crouch(self):
         pass
+
+    def reset_jumps(self):
+        """ Resets the player's number of jumps"""
+        self._no_jump = False
+        self._jump_time = 0
+        self._cur_jump = 0
+        self._hold_jump = False
+
+    def increment_jump(self):
+        """ Increments the player's current jump"""
+        self._cur_jump += 1
+        self._jump_time = 0
+        self._hold_jump = True
 
 class PlayerState(Enum):
     """ What the player is doing"""

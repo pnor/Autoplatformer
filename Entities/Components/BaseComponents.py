@@ -24,6 +24,10 @@ class Component(ABC):
         """ Update entity using information stored in component"""
         pass
 
+    def was_added(self):
+        """ Called right after when an Entity adds this component to its dictionary"""
+        pass
+
     @classmethod
     def __set_id_class(cls):
         """ Sets the id_class of the subclass Component object with the class object of the Component
