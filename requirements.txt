@@ -4,7 +4,7 @@ lazy-object-proxy==1.4.1
 mccabe==0.6.1
 pygame==1.9.6
 pygame-menu==1.96.1
-pylint==2.3.1
+pylint==4.0.9
 pyscroll==2.19.2
 PyTMX==3.21.7
 PyX==0.14.1
